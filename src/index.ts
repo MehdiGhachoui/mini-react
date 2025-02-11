@@ -12,7 +12,7 @@ const MiniReact = {
 };
 
 //STEP I: CREATE FUNCTION
-
+//Fix this !!
 // TSX :
 /** @tsx MiniReact.createElement */
 // const element = (<div id="foo"></div>);
