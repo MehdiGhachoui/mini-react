@@ -8,6 +8,6 @@ export type ReactElement = {
   // ownner,key,ref
   type: string;
   props: keys & {
-    children: ReactElement[] | string;
+    children: ReactElement[];
   };
 };

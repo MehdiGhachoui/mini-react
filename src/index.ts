@@ -1,4 +1,5 @@
-import createElement from "./create";
+import createElement from "./func/create";
+import { ReactElement } from "./types";
 
 // const element = <h1 title="Hello"> World </h1> (1)
 // const container = document.getElementById("root")
@@ -18,7 +19,7 @@ const MiniReact = {
 // const element = (<div id="foo"></div>);
 
 // will turn code into this :
-const element = MiniReact.createElement(
+const element: ReactElement = MiniReact.createElement(
   "h1",
   { title: "Hello" },
   MiniReact.createElement("World", {})

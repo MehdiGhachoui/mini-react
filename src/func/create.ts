@@ -1,4 +1,4 @@
-import { ReactElement, keys } from "./types";
+import { ReactElement, keys } from "../types";
 
 function createTextElement(text: string): ReactElement {
   return {
