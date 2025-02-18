@@ -11,3 +11,10 @@ export type ReactElement = {
     children: ReactElement[];
   };
 };
+
+export type Fiber = ReactElement & {
+  parent: Fiber;
+  child: Fiber | null;
+  sibling: Fiber | null;
+  dom: HTMLElement | null;
+};

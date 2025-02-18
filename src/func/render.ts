@@ -1,4 +1,4 @@
-import { ReactElement } from "../types";
+import { Fiber, ReactElement } from "../types";
 
 export function createDom(fiber) {
   const dom =
@@ -46,29 +46,32 @@ function workLoop(_deadline) {
   requestIdleCallback(workLoop);
 }
 
-function performUnitOfWork(fiber) {
+function performUnitOfWork(fiber: Fiber) {
   //Create new node and append it to the dom
   if (!fiber.dom) {
     fiber.dom = createDom(fiber);
   }
 
   if (fiber.parent) {
-    fiber.parent.dom.appendChild;
+    fiber.parent.dom?.appendChild;
   }
 
   //Create new fiber
   const elements = fiber.props.children;
   let idx = 0;
-  let prevSibling = null;
+  let prevSibling: Fiber | undefined = undefined;
   while (idx < elements.length) {
     const element = elements[idx];
 
-    const newFiber = {
+    const newFiber: Fiber = {
       type: element.type,
       props: element.props,
       parent: fiber,
+      child: null,
+      sibling: null,
       dom: null,
     };
+
     if (idx === 0) {
       fiber.child = newFiber;
     } else {
@@ -77,5 +80,17 @@ function performUnitOfWork(fiber) {
     prevSibling = newFiber;
     idx++;
   }
-  //TODO return next unit of work
+
+  //Search next unitofwork child -> sibling -> uncle ...
+  if (fiber.child) {
+    return fiber.child;
+  }
+
+  let nextFiber = fiber;
+  while (nextFiber) {
+    if (nextFiber.sibling) {
+      return nextFiber.sibling;
+    }
+    nextFiber = nextFiber.parent;
+  }
 }
