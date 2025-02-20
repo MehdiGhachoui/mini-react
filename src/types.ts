@@ -13,8 +13,8 @@ export type ReactElement = {
 };
 
 export type Fiber = ReactElement & {
-  parent: Fiber;
+  parent: Fiber | null;
   child: Fiber | null;
   sibling: Fiber | null;
-  dom: HTMLElement | null;
+  dom: Node | null;
 };
