@@ -15,8 +15,9 @@ export function createDom(fiber: Fiber) {
   return dom;
 }
 
+//Once we commit all the work we commit the fiber tree to the dom
 function commitRoot() {
-  commitWork(wiproot?.child as Fiber);
+  commitWork(wiproot?.child ?? null);
 }
 
 function commitWork(fiber: Fiber | null) {
@@ -51,13 +52,15 @@ function render(element: ReactElement, container: HTMLBodyElement) {
 //And for that we need "fiber tree" data structure @see: https://www.velotio.com/engineering-blog/react-fiber-algorithm
 
 // units are the element that we will render one by one starting from the "container"
-let nextUnitOfWork: Fiber | undefined = undefined;
-let wiproot: Fiber | undefined = undefined;
+let nextUnitOfWork: Fiber | null = null;
+
+// work in progress root; track the root of the fiber tree
+let wiproot: Fiber | null = null;
 
 function workLoop(_deadline: any) {
   let shouldYield = false;
   while (nextUnitOfWork && !shouldYield) {
-    nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
+    nextUnitOfWork = performUnitOfWork(nextUnitOfWork) as Fiber;
 
     //Check how much time we have until the browser needs to take control again
     shouldYield = _deadline.timeRemaining() < 1;
