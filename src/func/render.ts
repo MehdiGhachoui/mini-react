@@ -123,6 +123,6 @@ function performUnitOfWork(fiber: Fiber) {
     if (nextFiber.sibling) {
       return nextFiber.sibling;
     }
-    nextFiber = nextFiber.parent;
+    nextFiber = nextFiber.parent as Fiber;
   }
 }
