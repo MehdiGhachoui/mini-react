@@ -15,9 +15,15 @@ export function createDom(fiber: Fiber) {
   return dom;
 }
 
+//HERE
+function updateDom() {}
+
 //Once we commit all the work we commit the fiber tree to the dom
 function commitRoot() {
+  deletions.forEach(commitWork);
   commitWork(wiproot?.child ?? null);
+  currentRoot = wiproot as Fiber;
+  wiproot = null;
 }
 
 function commitWork(fiber: Fiber | null) {
@@ -25,7 +31,13 @@ function commitWork(fiber: Fiber | null) {
     return;
   }
   const domParent = fiber.parent?.dom;
-  domParent?.appendChild(fiber.dom as Node);
+  if (fiber.effectTag === "PLACEMENT" && fiber.dom !== null) {
+    domParent?.appendChild(fiber.dom);
+  } else if (fiber.effectTag === "UPDATE" && fiber.dom !== null) {
+    updateDom(fiber.dom, fiber.alternate?.props, fiber.props);
+  } else if (fiber.effectTag === "DELETE" && fiber.dom !== null) {
+    domParent?.removeChild(fiber.dom);
+  }
   commitWork(fiber.child);
   commitWork(fiber.sibling);
 }
@@ -57,6 +69,12 @@ let nextUnitOfWork: Fiber | null = null;
 // work in progress root; track the root of the fiber tree
 let wiproot: Fiber | null = null;
 
+//Reference to the last fiber tree commited to the DOM, to help us update and delete nodes
+let currentRoot: Fiber | undefined = undefined;
+
+//Keep track of the nodes we want to remove
+let deletions: Fiber[] = [];
+
 function workLoop(_deadline: any) {
   let shouldYield = false;
   while (nextUnitOfWork && !shouldYield) {
@@ -84,34 +102,11 @@ function performUnitOfWork(fiber: Fiber) {
     fiber.parent.dom?.appendChild(fiber.dom);
   }
 
-  //Create new fiber
+  //Create new fiber:
+
+  //Element are what we want to render to the dom
   const elements = fiber.props.children;
-
-  //!: telling the compiler that you know best, you are sure it won't be  null or undefined
-  //@see: https://www.typescriptlang.org/docs/handbook/release-notes/typescript-2-7.html#definite-assignment-assertions
-  let prevSibling!: Fiber;
-  let idx = 0;
-  while (idx < elements.length) {
-    const element = elements[idx];
-
-    const newFiber: Fiber = {
-      type: element.type,
-      props: element.props,
-      parent: fiber,
-      child: null,
-      sibling: null,
-      dom: null,
-    };
-
-    //Add it to the fiber tree either as child or sibling depending wither it's first child or not
-    if (idx === 0) {
-      fiber.child = newFiber;
-    } else {
-      prevSibling.sibling = newFiber;
-    }
-    prevSibling = newFiber;
-    idx++;
-  }
+  reconcileChildren(fiber, elements);
 
   //Search next unitofwork child -> sibling -> uncle ...
   if (fiber.child) {
@@ -124,5 +119,66 @@ function performUnitOfWork(fiber: Fiber) {
       return nextFiber.sibling;
     }
     nextFiber = nextFiber.parent as Fiber;
+  }
+}
+
+// Reconcile the old Fibers with the new element
+function reconcileChildren(fiber: Fiber, elements: ReactElement[]) {
+  let idx = 0;
+  //!: telling the compiler that you know best, you are sure it won't be  null or undefined
+  //@see: https://www.typescriptlang.org/docs/handbook/release-notes/typescript-2-7.html#definite-assignment-assertions
+  let prevSibling!: Fiber;
+  // The elements that we rendered last time
+  let oldFiber = fiber.alternate && fiber.alternate.child;
+
+  while (idx < elements.length && oldFiber !== null) {
+    const element = elements[idx];
+
+    let newFiber!: Fiber;
+
+    //Compare oldFiber the the new element
+    const sameType = oldFiber && element && element.type === oldFiber.type;
+
+    if (sameType) {
+      //Update the Node
+      newFiber = {
+        type: oldFiber.type,
+        props: element.props,
+        parent: fiber,
+        child: null,
+        sibling: null,
+        dom: oldFiber.dom,
+        alternate: oldFiber,
+        effectTag: "UPDATE",
+      };
+    }
+
+    if (element && !sameType) {
+      //Add this Node
+      newFiber = {
+        type: element.type,
+        props: element.props,
+        parent: fiber,
+        child: null,
+        sibling: null,
+        dom: null,
+        effectTag: "PLACEMENT",
+      };
+    }
+
+    if (oldFiber && !sameType) {
+      //Delete this olderFiber Node
+      oldFiber.effectTag = "DELETION";
+      deletions.push(oldFiber);
+    }
+
+    //Add it to the fiber tree either as child or sibling depending wither it's first child or not
+    if (idx === 0) {
+      fiber.child = newFiber;
+    } else {
+      prevSibling.sibling = newFiber;
+    }
+    prevSibling = newFiber;
+    idx++;
   }
 }

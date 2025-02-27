@@ -17,4 +17,6 @@ export type Fiber = ReactElement & {
   child: Fiber | null;
   sibling: Fiber | null;
   dom: Node | null;
+  alternate?: Fiber; // Link to the last commited fiber to the DOM
+  effectTag?: string;
 };
