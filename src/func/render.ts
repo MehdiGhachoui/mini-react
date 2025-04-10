@@ -15,12 +15,55 @@ export function createDom(fiber: Fiber) {
   return dom;
 }
 
-//HERE
-function updateDom() {}
+const isProperty = (key: string) => key !== "children" && !isEvent(key)
+const isNew=(prev,next)=>(key:string)=> prev[key] !== next[key]
+const isGone=(prev,next)=>(key:string)=> !(key in next)
+
+// Special Kind of props "Event listeners" , props that start with "on"
+const isEvent = (key:string) => key.startsWith("on")
+
+//TODO... ADD TYPES
+function updateDom(dom:Dom,prevProps,nextProps) {
+  //Compare the props from the old fiber and the ones from the new fiber
+
+  // Remove old properties tha are gone
+  Object.keys(prevProps)
+    .filter(isProperty)
+    .filter(isGone(prevProps,nextProps))
+    .forEach(name =>{
+      dom[name] = ""
+    })
+
+  // Add new or changed props
+  Object.keys(prevProps)
+    .filter(isProperty)
+    .filter(isNew(prevProps,nextProps))
+    .forEach(name =>{
+      dom[name] = nextProps[name]
+    })
+
+  // Remove old or changed event listeners
+  Object.keys(prevProps)
+    .filter(isEvent)
+    .filter((key:string)=>!(key in nextProps) || isNew(prevProps,nextProps)(key))
+    .forEach((name:string)=>{
+      const eventType = name.toLowerCase().substring(2)
+      dom.removeEventListener(eventType, prevProps[name])
+    })
+  
+  // Add event listeners
+  Object.keys(nextProps)
+  .filter(isEvent)
+  .filter(isNew(prevProps, nextProps))
+  .forEach((name:string) => {
+    const eventType = name.toLowerCase().substring(2)
+    dom.addEventListener(eventType, nextProps[name])
+  })
+}
 
 //Once we commit all the work we commit the fiber tree to the dom
 function commitRoot() {
-  deletions.forEach(commitWork);
+  deletions.forEach((f)=>commitWork(f));
   commitWork(wiproot?.child ?? null);
   currentRoot = wiproot as Fiber;
   wiproot = null;
@@ -124,6 +167,11 @@ function performUnitOfWork(fiber: Fiber) {
 
 // Reconcile the old Fibers with the new element
 function reconcileChildren(fiber: Fiber, elements: ReactElement[]) {
+  //elements is what we want to render to the DOM
+  //fiber is what was rendered last time
+  
+  //Compare them to see if there is any changes to apply to the DOM
+  
   let idx = 0;
   //!: telling the compiler that you know best, you are sure it won't be  null or undefined
   //@see: https://www.typescriptlang.org/docs/handbook/release-notes/typescript-2-7.html#definite-assignment-assertions
@@ -140,7 +188,7 @@ function reconcileChildren(fiber: Fiber, elements: ReactElement[]) {
     const sameType = oldFiber && element && element.type === oldFiber.type;
 
     if (sameType) {
-      //Update the Node
+      //Keep the DOM node just update it with new props
       newFiber = {
         type: oldFiber.type,
         props: element.props,
@@ -154,7 +202,7 @@ function reconcileChildren(fiber: Fiber, elements: ReactElement[]) {
     }
 
     if (element && !sameType) {
-      //Add this Node
+      // Create new DOM node
       newFiber = {
         type: element.type,
         props: element.props,
@@ -167,7 +215,7 @@ function reconcileChildren(fiber: Fiber, elements: ReactElement[]) {
     }
 
     if (oldFiber && !sameType) {
-      //Delete this olderFiber Node
+      //Remove the old node
       oldFiber.effectTag = "DELETION";
       deletions.push(oldFiber);
     }
